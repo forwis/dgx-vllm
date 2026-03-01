@@ -362,6 +362,15 @@ RUN python3 /workspace/dgx-vllm-build/fix_qwen3_next_prefix.py
 COPY fix_nvfp4_emulation_backend.py /workspace/dgx-vllm-build/fix_nvfp4_emulation_backend.py
 RUN python3 /workspace/dgx-vllm-build/fix_nvfp4_emulation_backend.py
 
+# ============================================================================
+# Fix MTP layer exclusion for ModelOpt NVFP4 (MUST be AFTER pip install)
+# ============================================================================
+# Bug: MTP weights are BF16 in checkpoints but 'mtp.layers.0*' exclude pattern
+# misses 'mtp.fc', causing shape mismatch during unquantized weight loading.
+# ============================================================================
+COPY fix_mtp_nvfp4_exclusion.py /workspace/dgx-vllm-build/fix_mtp_nvfp4_exclusion.py
+RUN python3 /workspace/dgx-vllm-build/fix_mtp_nvfp4_exclusion.py
+
 # NOTE: Triton 3.6.0 is already installed by PyTorch cu130 wheel.
 # No separate install step needed (removed in v17 cleanup).
 

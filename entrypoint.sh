@@ -120,11 +120,16 @@ case "$MODE" in
       --gpu-memory-utilization ${GPU_MEMORY_UTIL} \
       --max-num-seqs ${MAX_NUM_SEQS} \
       ${DISTRIBUTED_ARGS} \
+      --speculative-config '{\"method\":\"mtp\",\"num_speculative_tokens\":2}' \
       ${VLLM_EXTRA_ARGS:-}"
 
     echo "Starting vLLM..."
     echo "Command: ${VLLM_CMD}"
     echo "Note: SM_121 uses native Triton backend (integrated at build time)"
+
+    # Fix MTP layer exclusion for ModelOpt NVFP4 (MUST be BEFORE vLLM starts)
+    # This patches vLLM source code in-place to fix shape mismatches on MTP layers
+    python3 /workspace/dgx-vllm-build/fix_mtp_nvfp4_exclusion.py
 
     exec ${VLLM_CMD}
     ;;
