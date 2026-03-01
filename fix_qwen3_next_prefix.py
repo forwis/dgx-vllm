@@ -31,8 +31,32 @@ old_pattern = 'prefix=f"{prefix}.in_proj_qkvz"'
 if old_pattern in method_body:
     fixed_body = method_body.replace(old_pattern, "prefix=prefix", 1)
     content = content[:method_start] + fixed_body + content[next_method:]
-    with open(path, "w") as f:
-        f.write(content)
-    print("Fix applied: create_qkvz_proj doubled prefix removed")
+    print("Fix 1 (create_qkvz_proj doubled prefix) prepared.")
 else:
-    print("SKIP: pattern not found in create_qkvz_proj (may already be fixed)")
+    print("SKIP: prefix pattern not found in create_qkvz_proj.")
+
+# Fix 2: Set quant_config=None for the gate (ignore quantization)
+old_gate_pattern = """self.gate = ReplicatedLinear(
+            config.hidden_size,
+            config.num_experts,
+            bias=False,
+            quant_config=quant_config,
+            prefix=f"{prefix}.gate",
+        )"""
+new_gate_pattern = """self.gate = ReplicatedLinear(
+            config.hidden_size,
+            config.num_experts,
+            bias=False,
+            quant_config=None,
+            prefix=f"{prefix}.gate",
+        )"""
+
+if old_gate_pattern in content:
+    content = content.replace(old_gate_pattern, new_gate_pattern, 1)
+    print("Fix 2 (gate quant_config) prepared.")
+else:
+    print("SKIP: gate pattern not found (may already be fixed)")
+
+with open(path, "w") as f:
+    f.write(content)
+print("All applicable fixes written to:", path)
