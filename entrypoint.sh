@@ -105,33 +105,40 @@ case "$MODE" in
       export VLLM_HOST_IP="${HEAD_IP}"
       export MASTER_ADDR="${HEAD_IP}"
       export RAY_memory_usage_threshold=0.98
-
-      DISTRIBUTED_ARGS="--distributed-executor-backend ray --tensor-parallel-size ${TENSOR_PARALLEL_SIZE}"
     else
       echo "Single GPU execution"
-      DISTRIBUTED_ARGS=""
     fi
 
-    # Build vLLM command
-    VLLM_CMD="vllm serve ${MODEL} \
-      --host ${HOST} \
-      --port ${PORT} \
-      --max-model-len ${MAX_MODEL_LEN} \
-      --gpu-memory-utilization ${GPU_MEMORY_UTIL} \
-      --max-num-seqs ${MAX_NUM_SEQS} \
-      ${DISTRIBUTED_ARGS} \
-      --speculative-config '{\"method\":\"mtp\",\"num_speculative_tokens\":2}' \
-      ${VLLM_EXTRA_ARGS:-}"
+    # Build vLLM command as an array to handle arguments with spaces/quotes correctly
+    VLLM_CMD=(
+      vllm serve "${MODEL}"
+      --host "${HOST}"
+      --port "${PORT}"
+      --max-model-len "${MAX_MODEL_LEN}"
+      --gpu-memory-utilization "${GPU_MEMORY_UTIL}"
+      --max-num-seqs "${MAX_NUM_SEQS}"
+      --speculative-config '{"method":"mtp","num_speculative_tokens":2}'
+    )
+
+    # Add distributed args if TP > 1
+    if [[ ${TENSOR_PARALLEL_SIZE} -gt 1 ]]; then
+      VLLM_CMD+=(--distributed-executor-backend ray --tensor-parallel-size "${TENSOR_PARALLEL_SIZE}")
+    fi
+
+    # Add extra args if provided (preserving word splitting for extra args)
+    if [[ -n "${VLLM_EXTRA_ARGS:-}" ]]; then
+      VLLM_CMD+=(${VLLM_EXTRA_ARGS})
+    fi
 
     echo "Starting vLLM..."
-    echo "Command: ${VLLM_CMD}"
+    echo "Command: ${VLLM_CMD[*]}"
     echo "Note: SM_121 uses native Triton backend (integrated at build time)"
 
     # Fix MTP layer exclusion for ModelOpt NVFP4 (MUST be BEFORE vLLM starts)
     # This patches vLLM source code in-place to fix shape mismatches on MTP layers
     python3 /workspace/dgx-vllm-build/fix_mtp_nvfp4_exclusion.py
 
-    exec ${VLLM_CMD}
+    exec "${VLLM_CMD[@]}"
     ;;
 
   bash)
