@@ -117,7 +117,7 @@ case "$MODE" in
       --max-model-len "${MAX_MODEL_LEN}"
       --gpu-memory-utilization "${GPU_MEMORY_UTIL}"
       --max-num-seqs "${MAX_NUM_SEQS}"
-      --speculative-config '{"method":"qwen3_next_mtp","num_speculative_tokens":2}'
+      --speculative-config '{"method":"mtp","num_speculative_tokens":2}'
     )
 
     # Add distributed args if TP > 1
